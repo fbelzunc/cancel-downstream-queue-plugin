@@ -2,6 +2,7 @@ package com.cloudbees.jenkins.plugins;
 
 import hudson.Extension;
 import hudson.model.AbstractProject;
+import hudson.model.Items;
 import hudson.model.Job;
 import hudson.model.Queue;
 import hudson.model.queue.QueueListener;
@@ -23,22 +24,26 @@ public class Test extends QueueListener {
     public void onEnterWaiting(Queue.WaitingItem wi) {
 
         String jobName = wi.task.getName();
-        Job jobTriggered = (Job) Jenkins.getInstance().getItemByFullName(jobName);
-        AbstractProject jobTriggered2 = (AbstractProject) jobTriggered;
-        List<AbstractProject> childJobs = jobTriggered2.getDownstreamProjects();
-        Iterator childJobsIterator = childJobs.iterator();
 
-        if(jobTriggered2.getTrigger(CancelDownstreamQueueTrigger.class)!=null) {
-        //TODO need to check timestamp of first job in case it was already built
+        if (jobName.equals("job-1")) {
 
-            while (childJobsIterator.hasNext()) {
-                AbstractProject downstreamJob = (AbstractProject) childJobsIterator.next();
-                System.out.println("Downstream job " + downstreamJob.getName());
+            Job jobTriggered = (Job) Jenkins.getInstance().getItemByFullName(jobName);
+            AbstractProject jobTriggered2 = (AbstractProject) jobTriggered;
+            List<AbstractProject> childJobs = jobTriggered2.getDownstreamProjects();
+            Iterator childJobsIterator = childJobs.iterator();
 
-                Jenkins.getInstance().getQueue().cancel(downstreamJob.getOwnerTask());
-                System.out.println("Job was cancelled " + downstreamJob.getOwnerTask().getName());
-            }
+            //TODO need to check timestamp of first job in case it was already built
+            if (jobTriggered2.getTrigger(CancelDownstreamQueueTrigger.class) != null)
+                while (childJobsIterator.hasNext()) {
+                    AbstractProject child = (AbstractProject) childJobsIterator.next();
+
+                    Queue.Item[] childs = Jenkins.getInstance().getQueue().getItems();
+                        for(int i=-0; i<childs.length; i++) {
+                            Queue.Item myItem = childs[i];
+                            System.out.println("Cancelling " + myItem.task.getDisplayName());
+                            Jenkins.getInstance().getQueue().cancel(myItem.task);
+                        }
+                }
         }
-
     }
 }
