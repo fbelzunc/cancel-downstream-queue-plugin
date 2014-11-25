@@ -6,13 +6,15 @@ import hudson.model.Queue;
 import hudson.model.queue.QueueListener;
 import jenkins.model.Jenkins;
 
-import javax.naming.Context;
-import java.io.IOException;
+
 import java.util.*;
-import java.util.concurrent.Executor;
+import java.util.List;
+
 
 @Extension
 public class Test extends QueueListener {
+
+    List<AbstractProject> currentStreamJobs = new ArrayList<AbstractProject>();
 
     public static Test instance() {
         return Jenkins.getInstance().getExtensionList(QueueListener.class).get(Test.class);
@@ -20,7 +22,6 @@ public class Test extends QueueListener {
 
     @Override
     public void onEnterWaiting(Queue.WaitingItem wi) {
-
 
         String jobName = wi.task.getName();
 
@@ -30,7 +31,20 @@ public class Test extends QueueListener {
 
         if (project.getTrigger(CancelDownstreamQueueTrigger.class)!=null) {
             cancelDownstreamJobs(job);
+        }
+        //Now start cancelling the builds/queue of the downstream jobs
+       if (currentStreamJobs.size()!=0) {
+            //Next step is to cancel the downstream jobs
+            Iterator downStreamJobsIterator = currentStreamJobs.iterator();
 
+            while (downStreamJobsIterator.hasNext()) {
+                AbstractProject downStreamJob = (AbstractProject) downStreamJobsIterator.next();
+                cancelDownstreamJobs((Job) downStreamJob);
+                //This is launching java.util.ConcurrentModificationException
+                //currentStreamJobs.remove(downStreamJob);
+                //downStreamJobsIterator.remove();
+            }
+           currentStreamJobs.clear();
         }
     }
 
@@ -48,7 +62,7 @@ public class Test extends QueueListener {
             Date date = job.getLastBuild().getTime();
             long buildDate = date.getTime();
             long diff= currentTimeLong - buildDate;
-            if((diff)< 30*1000)
+            if((diff)< 3000*1000)
                 job.getLastBuild().getExecutor().doStop();
         }
 
@@ -58,15 +72,16 @@ public class Test extends QueueListener {
 
         while (childProjectsIterator.hasNext()) {
             AbstractProject childProject = (AbstractProject) childProjectsIterator.next();
-            if (childProject.isBuilding())
+            System.out.println("Job in the downstream: " + childProject.getName());
+
+            currentStreamJobs.addAll(childProject.getDownstreamProjects());
+            if (childProject.isBuilding()) {
                 childProject.getLastBuild().getExecutor().doStop();
+            }
             else if (childProject.isInQueue()) {
                 Queue.Item myItem = childProject.getQueueItem();
                 Jenkins.getInstance().getQueue().cancel(myItem.task);
             }
-
         }
     }
-
-
 }
