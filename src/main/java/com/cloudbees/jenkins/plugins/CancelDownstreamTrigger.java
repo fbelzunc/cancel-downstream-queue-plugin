@@ -6,34 +6,45 @@ import hudson.model.Item;
 import hudson.model.Queue;
 import hudson.triggers.Trigger;
 import hudson.triggers.TriggerDescriptor;
+import net.sf.json.JSONObject;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.StaplerRequest;
 
 import java.io.IOException;
 
-public class CancelDownstreamQueueTrigger extends Trigger<AbstractProject> {
+import static org.apache.commons.lang.StringUtils.trimToNull;
 
-    private final String name;
+
+public class CancelDownstreamTrigger extends Trigger<AbstractProject> {
+
+    public Long numOfMilliSeconds;
 
     // Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
     @DataBoundConstructor
-    public CancelDownstreamQueueTrigger(String name) {
-        this.name = name;
+    public CancelDownstreamTrigger(Long numOfMilliSeconds) {
+        this.numOfMilliSeconds = numOfMilliSeconds;
+    }
+    public Long getNumOfMilliSeconds(){
+        return numOfMilliSeconds;
     }
 
+    @Override
     public DescriptorImpl getDescriptor() {
         return (DescriptorImpl)super.getDescriptor();
     }
 
-    /**
-     * Descriptor for {@link HelloWorldBuilder}. Used as a singleton.
-     * The class is marked as public so that it can be accessed from views.
-     *
-     * <p>
-     * See <tt>src/main/resources/hudson/plugins/hello_world/HelloWorldBuilder/*.jelly</tt>
-     * for the actual HTML fragment for the configuration screen.
-     */
     @Extension
     public static class DescriptorImpl extends TriggerDescriptor {
+
+        public Long numOfMilliSeconds;
+
+        public Long getNumOfMilliSeconds() {
+            return numOfMilliSeconds;
+        }
+
+        public void setNumOfMilliSeconds(Long numOfMilliSeconds) {
+            this.numOfMilliSeconds = numOfMilliSeconds;
+        }
 
         @Override
         public boolean isApplicable(Item item) {
@@ -42,7 +53,7 @@ public class CancelDownstreamQueueTrigger extends Trigger<AbstractProject> {
 
         @Override
         public String getDisplayName() {
-            return "Cancel downstream queue after X seconds";
+            return "Build immediately cancelling downstream";
         }
     }
 }
